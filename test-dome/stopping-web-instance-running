@@ -1,0 +1,37 @@
+#!/bin/bash
+set -e  # Exit on error
+
+# VARIABLES (update if needed)
+VPC_ID="vpc-0bf12cc96842c7b6e"
+REGION="us-east-1"
+
+echo "Fetching all running EC2 instances in VPC $VPC_ID..."
+
+# Get all instance IDs in the VPC that are running
+INSTANCE_IDS=$(aws ec2 describe-instances \
+  --region "$REGION" \
+  --filters "Name=vpc-id,Values=$VPC_ID" "Name=instance-state-name,Values=running" \
+  --query "Reservations[].Instances[].InstanceId" \
+  --output text)
+
+if [ -z "$INSTANCE_IDS" ]; then
+  echo "No running instances found in VPC $VPC_ID."
+  exit 0
+fi
+
+echo "Stopping instances: $INSTANCE_IDS"
+
+# Stop the instances
+aws ec2 stop-instances --instance-ids $INSTANCE_IDS --region "$REGION"
+
+echo "Waiting for instances to enter 'stopped' state..."
+aws ec2 wait instance-stopped --instance-ids $INSTANCE_IDS --region "$REGION"
+
+echo "All instances in VPC $VPC_ID are now STOPPED ✅"
+
+# Optional: log current state of all instances in VPC
+aws ec2 describe-instances \
+    --filters "Name=vpc-id,Values=$VPC_ID" \
+    --query "Reservations[].Instances[].{ID:InstanceId,State:State.Name}" \
+    --region "$REGION" \
+    --output table
