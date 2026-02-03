@@ -1,0 +1,71 @@
+pipeline {
+    agent any
+
+    environment {
+        VPC_ID = "vpc-0bf12cc96842c7b6e"
+        REGION = "us-east-1"
+        SCRIPT = "start-ec2-vpc.sh"
+    }
+
+    stages {
+        stage('Clone GitHub Repo') {
+            steps {
+                // Correct usage: git() inside steps
+                git branch: 'main', 
+                    url: 'https://github.com/IBRAH-001/test-dome.git', 
+                    credentialsId: 'Github-and-jenkins-authentication'
+            }
+        }
+
+        stage('Prepare Script') {
+            steps {
+                sh "chmod +x ${SCRIPT}"
+            }
+        }
+
+        stage('Start EC2 Instances in VPC') {
+            steps {
+                sh """
+                    set -e
+
+                    echo "Fetching all stopped EC2 instances in VPC $VPC_ID..."
+
+                    INSTANCE_IDS=\$(aws ec2 describe-instances \\
+                        --region $REGION \\
+                        --filters "Name=vpc-id,Values=$VPC_ID" "Name=instance-state-name,Values=stopped" \\
+                        --query "Reservations[].Instances[].InstanceId" \\
+                        --output text)
+
+                    if [ -z "\$INSTANCE_IDS" ]; then
+                        echo "No stopped instances found in VPC $VPC_ID."
+                        exit 0
+                    fi
+
+                    echo "Starting instances: \$INSTANCE_IDS"
+                    aws ec2 start-instances --instance-ids \$INSTANCE_IDS --region $REGION
+
+                    echo "Waiting for instances to enter 'running' state..."
+                    aws ec2 wait instance-running --instance-ids \$INSTANCE_IDS --region $REGION
+
+                    echo "All instances in VPC $VPC_ID are now RUNNING ✅"
+
+                    # Log current state of all instances in VPC
+                    aws ec2 describe-instances \\
+                        --filters "Name=vpc-id,Values=$VPC_ID" \\
+                        --query "Reservations[].Instances[].{ID:InstanceId,State:State.Name}" \\
+                        --region $REGION \\
+                        --output table
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Jenkins Job Completed Successfully ✅"
+        }
+        failure {
+            echo "Jenkins Job Failed ❌"
+        }
+    }
+}
