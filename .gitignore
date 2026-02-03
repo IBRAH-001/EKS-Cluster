@@ -1,0 +1,13 @@
+.DS_Store
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Java/Maven
+target/
+*.iml
+
+# Logs
+*.log
