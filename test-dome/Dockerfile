@@ -16,8 +16,8 @@ FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # Copy the executable JAR from builder
-# The spring-boot-maven-plugin creates a jar with -exec suffix or in target directory
-COPY --from=builder /build/target/my-app-1.0.27.jar app.jar
+# The build uses a fixed finalName of app
+COPY --from=builder /build/target/app.jar app.jar
 
 # Verify the JAR has the manifest
 RUN jar tf app.jar | grep -i manifest && echo "JAR is valid"
@@ -25,4 +25,4 @@ RUN jar tf app.jar | grep -i manifest && echo "JAR is valid"
 EXPOSE 8080
 
 # Use exec form to ensure proper signal handling
-NTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
