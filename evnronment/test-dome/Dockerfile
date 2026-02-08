@@ -19,8 +19,8 @@ WORKDIR /app
 # The build uses a fixed finalName of app
 COPY --from=builder /build/target/app.jar app.jar
 
-# Verify the JAR has the manifest
-RUN jar tf app.jar | grep -i manifest && echo "JAR is valid"
+# ⚠️ jar command does not exist in JRE, remove or switch to JDK if you want this check
+# RUN jar tf app.jar | grep -i manifest && echo "JAR is valid"
 
 EXPOSE 8080
 
