@@ -1,28 +1,30 @@
+# -------------------------
 # Multi-stage build
+# -------------------------
+# Builder stage: build the JAR
 FROM maven:3.9-eclipse-temurin-17 AS builder
 
 WORKDIR /build
 
-# Copy pom.xml and source
+# Copy Maven project files
 COPY pom.xml .
 COPY src ./src
 
-# Build the application - Maven will create the fat JAR with spring-boot-maven-plugin
+# Build the application (skip tests)
 RUN mvn clean package -DskipTests -q
 
+# -------------------------
 # Runtime stage
+# -------------------------
 FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
-# Copy the executable JAR from builder
-# The build uses a fixed finalName of app
+# Copy the fat JAR from builder stage
 COPY --from=builder /build/target/app.jar app.jar
 
-# ⚠️ jar command does not exist in JRE, remove or switch to JDK if you want this check
-# RUN jar tf app.jar | grep -i manifest && echo "JAR is valid"
-
+# Expose the application port
 EXPOSE 8080
 
-# Use exec form to ensure proper signal handling
+# Start the application using exec form (correct quotes)
 ENTRYPOINT ["java", "-jar", "app.jar"]
